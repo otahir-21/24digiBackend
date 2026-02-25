@@ -1,0 +1,345 @@
+{
+  "info": {
+    "name": "Fitness Onboarding API",
+    "description": "24digiBackend - Auth + Profile endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "challenge_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login Start (Phone)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.challenge_id) { pm.collectionVariables.set('challenge_id', json.data.challenge_id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login_method\": \"phone\",\n  \"phone_number\": \"+971501234567\",\n  \"country_code\": \"AE\",\n  \"language\": \"en\",\n  \"device\": {\n    \"device_id\": \"device-123\",\n    \"platform\": \"ios\",\n    \"app_version\": \"1.0.0\",\n    \"push_token\": \"optional-push-token\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/auth/login/start",
+            "description": "Start OTP login with phone. Check server console for OTP in dev."
+          }
+        },
+        {
+          "name": "Login Start (Email)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.challenge_id) { pm.collectionVariables.set('challenge_id', json.data.challenge_id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login_method\": \"email\",\n  \"email\": \"user@example.com\",\n  \"language\": \"en\",\n  \"device\": {\n    \"device_id\": \"device-123\",\n    \"platform\": \"android\",\n    \"app_version\": \"1.0.0\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/auth/login/start",
+            "description": "Start OTP login with email."
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.access_token) { pm.collectionVariables.set('access_token', json.data.access_token); }",
+                  "if (json.data && json.data.refresh_token) { pm.collectionVariables.set('refresh_token', json.data.refresh_token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge_id\": \"{{challenge_id}}\",\n  \"otp_code\": \"123456\",\n  \"device\": {\n    \"device_id\": \"device-123\",\n    \"platform\": \"ios\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/auth/login/verify-otp",
+            "description": "Use challenge_id from Login Start and OTP from server console (dev)."
+          }
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge_id\": \"{{challenge_id}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login/resend-otp"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.access_token) { pm.collectionVariables.set('access_token', json.data.access_token); }",
+                  "if (json.data && json.data.refresh_token) { pm.collectionVariables.set('refresh_token', json.data.refresh_token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/token/refresh"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/profile/me"
+          }
+        },
+        {
+          "name": "PUT Basic",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"date_of_birth\": \"1990-05-15\",\n  \"height_cm\": 175,\n  \"weight_kg\": 72,\n  \"gender\": \"male\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/basic"
+          }
+        },
+        {
+          "name": "PATCH Basic",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"weight_kg\": 70\n}"
+            },
+            "url": "{{baseUrl}}/profile/basic"
+          }
+        },
+        {
+          "name": "PUT Health",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"health_considerations\": [\"none_prefer_not_to_say\"]\n}"
+            },
+            "url": "{{baseUrl}}/profile/health"
+          }
+        },
+        {
+          "name": "PATCH Health",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"health_considerations\": [\"sleep_recovery\"]\n}"
+            },
+            "url": "{{baseUrl}}/profile/health"
+          }
+        },
+        {
+          "name": "PUT Nutrition",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"food_allergies\": [\"none\"],\n  \"dietary_goal\": \"balanced\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/nutrition"
+          }
+        },
+        {
+          "name": "PUT Nutrition (with other)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"food_allergies\": [\"dairy\", \"other\"],\n  \"other_allergy_text\": \"Kiwi\",\n  \"dietary_goal\": \"high_protein\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/nutrition"
+          }
+        },
+        {
+          "name": "PATCH Nutrition",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dietary_goal\": \"vegan\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/nutrition"
+          }
+        },
+        {
+          "name": "PUT Activity",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activity_level\": \"moderately_active\",\n  \"preferred_workouts\": [\"strength_training\", \"cardio\"],\n  \"workouts_per_week\": 4,\n  \"days_off\": [\"sat\", \"sun\"],\n  \"timezone\": \"Asia/Dubai\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/activity"
+          }
+        },
+        {
+          "name": "PATCH Activity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workouts_per_week\": 5,\n  \"days_off\": [\"sun\"]\n}"
+            },
+            "url": "{{baseUrl}}/profile/activity"
+          }
+        },
+        {
+          "name": "PUT Goals",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"primary_goal\": \"improve_fitness\",\n  \"current_build\": \"average\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/goals"
+          }
+        },
+        {
+          "name": "PATCH Goals",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"primary_goal\": \"lose_weight\"\n}"
+            },
+            "url": "{{baseUrl}}/profile/goals"
+          }
+        },
+        {
+          "name": "Finish Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true,\n  \"consents\": {\n    \"terms_accepted\": true,\n    \"privacy_accepted\": true,\n    \"health_disclaimer_accepted\": true\n  }\n}"
+            },
+            "url": "{{baseUrl}}/profile/finish"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      }
+    }
+  ]
+}
