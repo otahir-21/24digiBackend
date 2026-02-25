@@ -1,5 +1,6 @@
 # Deploy 24digiBackend to AWS Elastic Beanstalk on push to main
-# Required secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (or use OIDC)
+# Required secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+# IAM user must have EB + S3 permissions (see docs/AWS-CICD-SETUP.md)
 name: Deploy to AWS Elastic Beanstalk
 
 on:
@@ -24,13 +25,39 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-north-1
 
+      - name: Get Elastic Beanstalk S3 bucket
+        id: bucket
+        run: |
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="elasticbeanstalk-eu-north-1-${AWS_ACCOUNT_ID}"
+          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
+          echo "Using S3 bucket: $BUCKET"
+
       - name: Deploy to Elastic Beanstalk
-        uses: einaregilsson/beanstalk-deploy@v22
-        with:
-          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          application_name: 24digi-backend
-          environment_name: 24digi-backend-prod
-          version_label: 24digi-${{ github.sha }}
-          region: eu-north-1
-          deployment_package: deploy.zip
+        env:
+          APP_NAME: 24digi-backend
+          ENV_NAME: 24digi-backend-prod
+          VERSION_LABEL: 24digi-${{ github.sha }}
+          REGION: eu-north-1
+        run: |
+          BUCKET="${{ steps.bucket.outputs.bucket }}"
+          S3_KEY="${APP_NAME}/${VERSION_LABEL}.zip"
+          echo "Uploading to s3://${BUCKET}/${S3_KEY}"
+          aws s3 cp deploy.zip "s3://${BUCKET}/${S3_KEY}"
+          echo "Creating application version ${VERSION_LABEL}"
+          aws elasticbeanstalk create-application-version \
+            --application-name "$APP_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle "S3Bucket=${BUCKET},S3Key=${S3_KEY}" \
+            --region "$REGION" \
+            --description "Deploy from GitHub Actions ${{ github.sha }}"
+          echo "Updating environment ${ENV_NAME}"
+          aws elasticbeanstalk update-environment \
+            --environment-name "$ENV_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --region "$REGION"
+          echo "Waiting for environment to update..."
+          aws elasticbeanstalk wait environment-updated \
+            --environment-name "$ENV_NAME" \
+            --region "$REGION"
+          echo "Deployment completed successfully."

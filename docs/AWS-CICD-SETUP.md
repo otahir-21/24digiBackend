@@ -69,8 +69,41 @@ Uses a workflow in your repo. You only add AWS credentials as GitHub secrets.
 ### 1. Create IAM user for deployments (if you don’t have one)
 
 1. **IAM** → **Users** → **Create user** (e.g. `github-actions-24digi`).
-2. **Attach policies:** `AWSElasticBeanstalkFullAccess` (or a custom policy with only the EB deploy permissions you need).
-3. **Create access key** → **Application running outside AWS** → copy **Access key ID** and **Secret access key**.
+2. **Attach policies:** `AdministratorAccess-AWSElasticBeanstalk`.
+3. **Add S3 permissions** (required for deploy – EB uploads the zip to S3):
+   - User → **Permissions** → **Add permissions** → **Create inline policy** → **JSON** tab.
+   - Paste the policy below (replace `928096315017` with your AWS account ID if different):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:GetObjectAcl",
+        "s3:PutObjectAcl",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::elasticbeanstalk-eu-north-1-928096315017",
+        "arn:aws:s3:::elasticbeanstalk-eu-north-1-928096315017/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+   - Name it e.g. `EB-Deploy-S3` → **Create policy**.
+4. **Create access key** → **Application running outside AWS** → copy **Access key ID** and **Secret access key**.
 
 ### 2. Add GitHub secrets
 
