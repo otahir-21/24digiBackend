@@ -157,6 +157,55 @@ Collection variables: `baseUrl`, `access_token`, `refresh_token`, `challenge_id`
 - OTP is **not** sent by SMS/email. It is logged to the server console, e.g. `[DEV] OTP for +971501234567 : 123456`.
 - Use that code in **Verify OTP** to complete login.
 
+## Deploy on AWS (Elastic Beanstalk)
+
+The app listens on `process.env.PORT` (AWS sets this automatically). Use **Elastic Beanstalk** for the simplest deployment.
+
+### 1. Prerequisites
+
+- AWS account
+- [EB CLI](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/eb-cli3-install.html) (optional; you can use the AWS Console instead)
+
+### 2. Create environment in AWS Console
+
+1. Go to **AWS Console** → **Elastic Beanstalk** → **Create Application**.
+2. **Application name:** e.g. `24digi-backend`.
+3. **Platform:** Node.js (use the recommended Node 18+ platform).
+4. **Application code:** Upload your code (zip of the project, excluding `node_modules` and `.env`) or connect to **GitHub** (recommended).
+5. **Create environment** and wait for the first deployment.
+
+### 3. Set environment variables
+
+In Elastic Beanstalk → your environment → **Configuration** → **Software** → **Edit** → **Environment properties**, add at least:
+
+| Name | Description |
+|------|-------------|
+| `MONGO_URI` | MongoDB Atlas connection string |
+| `JWT_SECRET` or `JWT_ACCESS_SECRET` & `JWT_REFRESH_SECRET` | JWT secrets |
+| `NODE_ENV` | `production` |
+| `CORS_ORIGIN` | Your frontend origin(s), e.g. `https://your-app.com` or `*` for testing |
+
+Add any other vars from your `.env` (e.g. `ACCESS_TOKEN_EXPIRY_DAYS`, Stripe, SMS, etc.). **Do not** commit `.env` to Git.
+
+### 4. Deploy from Git (recommended)
+
+- In **Elastic Beanstalk** → **Application** → **Application versions**, use **Deploy** and point to your GitHub repo, or
+- With EB CLI from your machine:
+  ```bash
+  eb init -p "Node.js 18" 24digi-backend --region us-east-1
+  eb create 24digi-backend-prod
+  eb setenv MONGO_URI="..." JWT_SECRET="..." NODE_ENV=production
+  eb deploy
+  ```
+
+### 5. Your API URL
+
+After deployment, use the environment URL shown in Beanstalk (e.g. `https://24digi-backend.us-east-1.elasticbeanstalk.com`). Update your Postman/frontend base URL to this.
+
+### Alternative: AWS App Runner
+
+You can also deploy by building a **Dockerfile** and deploying to **App Runner** (deploy from GitHub or ECR). The same environment variables must be set in App Runner.
+
 ## License
 
 ISC

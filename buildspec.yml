@@ -1,0 +1,17 @@
+# AWS CodeBuild spec for Elastic Beanstalk deployment
+# Used by CodePipeline: Source (GitHub) -> Build (CodeBuild) -> Deploy (EB)
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+  build:
+    commands:
+      - echo "Creating deployment package for Elastic Beanstalk..."
+      - zip -rq deploy.zip . -x "node_modules/*" -x ".git/*" -x ".env" -x ".env.*" -x "*.log" -x ".DS_Store" -x "coverage/*" -x ".nyc_output/*"
+
+artifacts:
+  files:
+    - deploy.zip
+  name: 24digi-backend-$(date +%Y%m%d%H%M%S)

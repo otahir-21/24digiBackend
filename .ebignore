@@ -1,0 +1,11 @@
+# Don't upload these to Elastic Beanstalk
+.env
+.env.*
+!.env.example
+node_modules
+.git
+.gitignore
+*.log
+.DS_Store
+coverage
+.nyc_output
