@@ -12,13 +12,20 @@ const SMSC_BULK_URL = 'https://api.smscountry.com/SMSCwebservice_bulk.aspx';
  * Phone must be E.164-like; we strip to digits for the API.
  */
 async function sendSms(phoneNumber, otp) {
-  if (!env.sms.enabled || !env.sms.smsc.apiKey || !env.sms.smsc.apiSecret) {
-    return { sent: false, reason: 'SMS not configured or disabled' };
+  const user = env.sms.smsc.apiKey || env.sms.smsc.authKey;
+  if (!env.sms.enabled || !user || !env.sms.smsc.apiSecret) {
+    const reason = !env.sms.enabled
+      ? 'SMS_ENABLED is not true'
+      : !user
+        ? 'SMSC_API_KEY / SMSC_AUTH_KEY not set'
+        : 'SMSC_API_SECRET not set';
+    logger.warn('SMS OTP skipped:', reason);
+    return { sent: false, reason };
   }
   const mobile = String(phoneNumber).replace(/\D/g, '');
   const message = `Your 24Digi verification code is: ${otp}. Valid for 5 minutes.`;
   const params = new URLSearchParams({
-    User: env.sms.smsc.apiKey,
+    User: user,
     passwd: env.sms.smsc.apiSecret,
     mobilenumber: mobile,
     message,
@@ -47,7 +54,11 @@ async function sendSms(phoneNumber, otp) {
  */
 async function sendEmail(toEmail, otp) {
   if (!env.email.enabled || !env.email.ses.fromEmail) {
-    return { sent: false, reason: 'Email not configured or disabled' };
+    const reason = !env.email.enabled
+      ? 'EMAIL_ENABLED is not true'
+      : 'AWS_SES_FROM_EMAIL not set';
+    logger.warn('Email OTP skipped:', reason);
+    return { sent: false, reason };
   }
   try {
     const { SESClient, SendEmailCommand } = await import('@aws-sdk/client-ses');

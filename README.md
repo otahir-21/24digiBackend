@@ -158,6 +158,30 @@ Collection variables: `baseUrl`, `access_token`, `refresh_token`, `challenge_id`
 - **Email login:** If `EMAIL_ENABLED=true` and AWS SES is configured (`.env`: `AWS_SES_REGION`, `AWS_SES_FROM_EMAIL`, and AWS credentials), the OTP is sent via **email** using AWS SES.
 - **Fallback / dev:** If SMS or email is disabled or fails, the OTP is **logged to the server console** in development (e.g. `[DEV] OTP for +971... : 123456`). Use that code in **Verify OTP** when testing locally.
 
+### OTP not received (troubleshooting)
+
+1. **Environment variables (production / EB)**  
+   In Elastic Beanstalk → **Configuration** → **Software** → **Environment properties**, add and set:
+   - `SMS_ENABLED` = `true` (for phone OTP)
+   - `EMAIL_ENABLED` = `true` (for email OTP)
+   - **SMS (SMSCountry):** `SMSC_API_KEY`, `SMSC_API_SECRET`, `SMSC_SENDER_ID` (or `SMSC_AUTH_KEY` as username if your provider uses it)
+   - **Email (SES):** `AWS_SES_REGION`, `AWS_SES_FROM_EMAIL`, `AWS_SES_FROM_NAME`, and **AWS credentials** (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) or an IAM role with `ses:SendEmail`
+
+2. **Check application logs**  
+   In EB: **Logs** → **Request Logs** → **Last 100 Lines** (or **Full Logs**). Look for:
+   - `SMS OTP skipped:` or `SMS send failed:` (and the reason)
+   - `Email OTP skipped:` or `Email send error:`
+   - `OTP not sent` with the `reason` (e.g. "SMS_ENABLED is not true", "Invalid Password!!")
+
+3. **SMS (SMSCountry)**  
+   - Ensure the account has credits and the sender ID is approved.
+   - Phone number must include country code (digits only, e.g. `971501234567`).
+
+4. **Email (SES)**  
+   - If SES is in **sandbox**, the **recipient address** must be verified in the AWS SES console.
+   - The **from address** (`AWS_SES_FROM_EMAIL`) must be verified in SES.
+   - The IAM user or role must have permission `ses:SendEmail` (and optionally `ses:SendRawEmail`).
+
 ## Deploy on AWS (Elastic Beanstalk)
 
 The app listens on `process.env.PORT` (AWS sets this automatically). Use **Elastic Beanstalk** for the simplest deployment.

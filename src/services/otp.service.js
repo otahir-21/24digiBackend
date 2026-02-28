@@ -3,6 +3,7 @@ const OtpChallenge = require('../models/OtpChallenge');
 const env = require('../config/env');
 const { generateOtp, hashOtp, verifyOtp } = require('../utils/crypto');
 const { maskPhone, maskEmail } = require('../utils/mask');
+const logger = require('../utils/logger');
 const notificationService = require('./notification.service');
 const {
   UnauthorizedError,
@@ -68,8 +69,11 @@ async function startChallenge(payload) {
 
   const destination = phone || emailNorm;
   const sent = await notificationService.sendOtp(login_method, destination, otp);
-  if (!sent.sent && env.nodeEnv === 'development') {
-    console.log('[DEV] OTP for', destination, ':', otp, sent.reason ? `(send failed: ${sent.reason})` : '');
+  if (!sent.sent) {
+    logger.warn('OTP not sent', { to: destination, reason: sent.reason });
+    if (env.nodeEnv === 'development') {
+      console.log('[DEV] OTP for', destination, ':', otp, '— use this code (send failed:', sent.reason, ')');
+    }
   }
 
   const otpSentToDisplay =
@@ -150,8 +154,11 @@ async function resendOtp(challengeId) {
 
   const destination = challenge.phoneNumber || challenge.email;
   const sent = await notificationService.sendOtp(challenge.loginMethod, destination, otp);
-  if (!sent.sent && env.nodeEnv === 'development') {
-    console.log('[DEV] Resend OTP for', destination, ':', otp, sent.reason ? `(send failed: ${sent.reason})` : '');
+  if (!sent.sent) {
+    logger.warn('OTP resend not sent', { to: destination, reason: sent.reason });
+    if (env.nodeEnv === 'development') {
+      console.log('[DEV] Resend OTP for', destination, ':', otp, '—', sent.reason);
+    }
   }
 
   return { expires_in_sec: env.otp.expiresSec };
