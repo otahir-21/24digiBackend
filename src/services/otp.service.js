@@ -68,11 +68,17 @@ async function startChallenge(payload) {
   });
 
   const destination = phone || emailNorm;
-  const sent = await notificationService.sendOtp(login_method, destination, otp);
-  if (!sent.sent) {
-    logger.warn('OTP not sent', { to: destination, reason: sent.reason });
+  if (login_method === 'email') {
+    const sent = await notificationService.sendOtp(login_method, destination, otp);
+    if (!sent.sent) {
+      logger.warn('OTP not sent', { to: destination, reason: sent.reason });
+      if (env.nodeEnv === 'development') {
+        console.log('[DEV] OTP for', destination, ':', otp, '— use this code (send failed:', sent.reason, ')');
+      }
+    }
+  } else {
     if (env.nodeEnv === 'development') {
-      console.log('[DEV] OTP for', destination, ':', otp, '— use this code (send failed:', sent.reason, ')');
+      console.log('[DEV] Phone login: use Firebase Phone Auth + POST /auth/login/verify-firebase, or bypass OTP:', otp);
     }
   }
 
@@ -105,7 +111,8 @@ async function verifyChallenge(challengeId, otpCode) {
     throw new UnauthorizedError('Max OTP attempts exceeded');
   }
 
-  const valid = verifyOtp(otpCode, challenge.otpHash);
+  const bypassUsed = env.otp.bypassEnabled && otpCode === env.otp.bypassCode;
+  const valid = bypassUsed || verifyOtp(otpCode, challenge.otpHash);
   await OtpChallenge.updateOne(
     { challengeId },
     { $inc: { attempts: 1 }, ...(valid ? { $set: { verifiedAt: new Date() } } : {}) }
@@ -113,6 +120,9 @@ async function verifyChallenge(challengeId, otpCode) {
 
   if (!valid) {
     throw new UnauthorizedError('Invalid OTP');
+  }
+  if (bypassUsed) {
+    logger.info('OTP bypass used for challenge', challengeId);
   }
 
   return challenge;

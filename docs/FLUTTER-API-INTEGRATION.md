@@ -62,6 +62,32 @@ Store `challenge_id` for verify and resend.
 
 Store `access_token` and `refresh_token` (e.g. `flutter_secure_storage`). Navigate to home or onboarding based on `is_profile_complete`.
 
+**OTP bypass (dev):** When the backend has `OTP_BYPASS_ENABLED=true`, you can skip the OTP screen: after login/start, call verify-otp with `otp_code: "000000"` (or the backend’s `OTP_BYPASS_CODE`). The API returns tokens and you can go to the next screen. Use only in dev builds.
+
+---
+
+### 2b. POST `/auth/login/verify-firebase` (Phone only)
+
+Use **Firebase Phone Auth** in the app; then send the Firebase ID token to this endpoint. Same response as verify-otp.
+
+**Request:**
+
+```json
+{
+  "firebase_id_token": "<idToken from Firebase Auth after phone sign-in>",
+  "device": {
+    "device_id": "string",
+    "platform": "android",
+    "app_version": "1.0.0",
+    "push_token": "optional"
+  }
+}
+```
+
+**Response (200):** same as verify-otp: `data.access_token`, `data.refresh_token`, `data.user` (`user_id`, `is_profile_complete`).
+
+Flow: App calls `FirebaseAuth.instance.verifyPhoneNumber(...)` → user gets SMS from Firebase → sign in with credential → `user.getIdToken(true)` → POST this endpoint with `firebase_id_token` → store tokens and navigate.
+
 ---
 
 ### 3. POST `/auth/login/resend-otp`

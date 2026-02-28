@@ -44,9 +44,15 @@ const refreshSchema = z.object({
   refresh_token: z.string().min(1, 'refresh_token is required'),
 });
 
+const verifyFirebaseSchema = z.object({
+  firebase_id_token: z.string().min(1, 'firebase_id_token is required'),
+  device: deviceSchema,
+});
+
 module.exports = {
   loginStartSchema,
   verifyOtpSchema,
   resendOtpSchema,
   refreshSchema,
+  verifyFirebaseSchema,
 };

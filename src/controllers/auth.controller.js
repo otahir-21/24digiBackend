@@ -12,6 +12,11 @@ async function verifyOtp(req, res) {
   return success(res, data, 200);
 }
 
+async function verifyFirebase(req, res) {
+  const data = await authService.verifyFirebaseAndLogin(req.body);
+  return success(res, data, 200);
+}
+
 async function resendOtp(req, res) {
   const data = await authService.resendOtp(req.body);
   return success(res, data, 200);
@@ -30,6 +35,7 @@ async function logout(req, res) {
 module.exports = {
   loginStart: asyncHandler(loginStart),
   verifyOtp: asyncHandler(verifyOtp),
+  verifyFirebase: asyncHandler(verifyFirebase),
   resendOtp: asyncHandler(resendOtp),
   refresh: asyncHandler(refresh),
   logout: asyncHandler(logout),

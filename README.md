@@ -120,9 +120,10 @@ npm run lint
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/auth/login/start` | Start OTP (phone or email), returns `challenge_id` |
-| POST | `/auth/login/verify-otp` | Verify OTP, returns access + refresh tokens and user |
-| POST | `/auth/login/resend-otp` | Resend OTP (cooldown + max resends enforced) |
+| POST | `/auth/login/start` | Start OTP for **email** only; returns `challenge_id` (phone: use Firebase + verify-firebase) |
+| POST | `/auth/login/verify-otp` | Verify email OTP, returns access + refresh tokens and user |
+| POST | `/auth/login/verify-firebase` | **Phone:** verify Firebase ID token (from Phone Auth), returns same tokens + user |
+| POST | `/auth/login/resend-otp` | Resend email OTP (cooldown + max resends enforced) |
 | POST | `/auth/token/refresh` | Rotate refresh token, get new access + refresh |
 | POST | `/auth/logout` | Revoke refresh token |
 
@@ -137,6 +138,25 @@ npm run lint
 | PUT/PATCH | `/profile/activity` | Activity level, workouts, days off, timezone |
 | PUT/PATCH | `/profile/goals` | Primary goal, current build |
 | POST | `/profile/finish` | Confirm consents and mark profile complete |
+
+### Firebase Phone Auth
+
+For **phone** login the app uses **Firebase Phone Auth** (no SMS from this backend). Flow:
+
+1. **App** uses Firebase SDK `verifyPhoneNumber` → user receives SMS from Firebase → enters code → Firebase returns an **ID token**.
+2. **App** sends that token to **POST /auth/login/verify-firebase** with body:
+   ```json
+   { "firebase_id_token": "<idToken>", "device": { "device_id": "...", "platform": "android", "app_version": "1.0.0" } }
+   ```
+3. **Backend** verifies the token with Firebase Admin, reads `phone_number`, finds or creates the user in MongoDB, issues **access_token** and **refresh_token** (same as verify-otp). User ID is the MongoDB `_id`.
+
+**Backend config:** Set one of:
+
+- **GOOGLE_APPLICATION_CREDENTIALS** – path to Firebase service account JSON file, or  
+- **FIREBASE_SERVICE_ACCOUNT_JSON** – the full service account JSON as a string (e.g. in EB env).
+
+Get the key from Firebase Console → Project settings → Service accounts → Generate new private key.  
+**Step-by-step for EB:** see [docs/FIREBASE-EB-SETUP.md](docs/FIREBASE-EB-SETUP.md).
 
 ### Health
 
@@ -158,6 +178,8 @@ Collection variables: `baseUrl`, `access_token`, `refresh_token`, `challenge_id`
 - **Email login:** If `EMAIL_ENABLED=true` and AWS SES is configured (`.env`: `AWS_SES_REGION`, `AWS_SES_FROM_EMAIL`, and AWS credentials), the OTP is sent via **email** using AWS SES.
 - **Fallback / dev:** If SMS or email is disabled or fails, the OTP is **logged to the server console** in development (e.g. `[DEV] OTP for +971... : 123456`). Use that code in **Verify OTP** when testing locally.
 
+- **Bypass OTP (dev only):** Set `OTP_BYPASS_ENABLED=true` and optionally `OTP_BYPASS_CODE=000000` in env. Then call **POST /auth/login/verify-otp** with `otp_code: "000000"` (or your custom code) and the `challenge_id` from login/start. The API will accept it and return tokens so you can skip the OTP screen and go to the next screen. **Do not enable in production.**
+
 ### OTP not received (troubleshooting)
 
 1. **Environment variables (production / EB)**  
@@ -174,13 +196,19 @@ Collection variables: `baseUrl`, `access_token`, `refresh_token`, `challenge_id`
    - `OTP not sent` with the `reason` (e.g. "SMS_ENABLED is not true", "Invalid Password!!")
 
 3. **SMS (SMSCountry)**  
-   - Ensure the account has credits and the sender ID is approved.
-   - Phone number must include country code (digits only, e.g. `971501234567`).
+   - **Password:** The bulk API accepts a **max 20 character** password. If `SMSC_API_SECRET` is longer (e.g. 40 chars), either set **`SMSC_PASSWORD`** in env to your actual account password (20 chars), or the app will use the first 20 characters of `SMSC_API_SECRET` (may fail if the API expects the full value elsewhere).  
+   - **User:** Use `SMSC_API_KEY` or `SMSC_AUTH_KEY` as the SMSCountry **username** (max 17 chars, alphanumeric).  
+   - Ensure the account has **credits** and the **sender ID** (`SMSC_SENDER_ID`) is approved for your account.  
+   - Phone number must include **country code, digits only** (e.g. `971501234567`).  
+   - Check logs for the exact response: `Invalid User Name!!`, `Invalid Password!!`, `Insufficient Balance!!!`, `Invalid mobile number(s) given`.
 
-4. **Email (SES)**  
-   - If SES is in **sandbox**, the **recipient address** must be verified in the AWS SES console.
-   - The **from address** (`AWS_SES_FROM_EMAIL`) must be verified in SES.
-   - The IAM user or role must have permission `ses:SendEmail` (and optionally `ses:SendRawEmail`).
+4. **Email (SES) not sending**  
+   - **Credentials:** The app uses `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from env for SES when set. Ensure both are set in EB Environment properties.  
+   - **From address:** In [AWS SES Console](https://console.aws.amazon.com/ses/) → **Verified identities**, add and verify **`noreply@24digi.ae`** (or your `AWS_SES_FROM_EMAIL`). For a custom domain you can verify the domain and then use any address @ that domain.  
+   - **Sandbox:** If your SES account is in **sandbox**, you can only send **to verified addresses**. Go to SES → **Verified identities** → **Create identity** → **Email address**, then add and verify each recipient email (they receive a verification link). To send to any address, request **production access** in SES.  
+   - **IAM:** The IAM user whose keys you use must have `ses:SendEmail` (e.g. attach managed policy **AmazonSESFullAccess** or a custom policy with `ses:SendEmail` on the correct region).  
+   - **Region:** `AWS_SES_REGION` must match the region where you verified the identity (e.g. `me-central-1`).  
+   - **Logs:** Check EB logs for `Email send error` – the message will show `MessageRejected`, `Email address is not verified`, `AccessDenied`, etc.
 
 ## Deploy on AWS (Elastic Beanstalk)
 
