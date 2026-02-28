@@ -152,10 +152,11 @@ Import `postman/Fitness-Onboarding-API.postman_collection.json` into Postman.
 
 Collection variables: `baseUrl`, `access_token`, `refresh_token`, `challenge_id`.
 
-## OTP (development)
+## How OTP is sent
 
-- OTP is **not** sent by SMS/email. It is logged to the server console, e.g. `[DEV] OTP for +971501234567 : 123456`.
-- Use that code in **Verify OTP** to complete login.
+- **Phone login:** If `SMS_ENABLED=true` and SMSCountry is configured (`.env`: `SMSC_API_KEY`, `SMSC_API_SECRET`, `SMSC_SENDER_ID`), the 6-digit OTP is sent via **SMS** using [SMSCountry bulk API](https://api.smscountry.com/SMSCwebservice_bulk.aspx).
+- **Email login:** If `EMAIL_ENABLED=true` and AWS SES is configured (`.env`: `AWS_SES_REGION`, `AWS_SES_FROM_EMAIL`, and AWS credentials), the OTP is sent via **email** using AWS SES.
+- **Fallback / dev:** If SMS or email is disabled or fails, the OTP is **logged to the server console** in development (e.g. `[DEV] OTP for +971... : 123456`). Use that code in **Verify OTP** when testing locally.
 
 ## Deploy on AWS (Elastic Beanstalk)
 

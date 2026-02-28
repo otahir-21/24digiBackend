@@ -20,6 +20,30 @@ const env = {
     maxResends: parseInt(process.env.OTP_MAX_RESENDS || '5', 10),
   },
   corsOrigin: process.env.CORS_ORIGIN || '*',
+  sms: {
+    enabled: process.env.SMS_ENABLED === 'true',
+    provider: process.env.SMS_PROVIDER || 'SMSC',
+    smsc: {
+      authKey: process.env.SMSC_AUTH_KEY,
+      apiKey: process.env.SMSC_API_KEY,
+      apiSecret: process.env.SMSC_API_SECRET,
+      senderId: process.env.SMSC_SENDER_ID || '24DIGI',
+    },
+    twilio: {
+      accountSid: process.env.TWILIO_ACCOUNT_SID,
+      authToken: process.env.TWILIO_AUTH_TOKEN,
+      fromNumber: process.env.TWILIO_PHONE_NUMBER,
+    },
+  },
+  email: {
+    enabled: process.env.EMAIL_ENABLED === 'true',
+    provider: process.env.EMAIL_PROVIDER || 'SES',
+    ses: {
+      region: process.env.AWS_SES_REGION || process.env.AWS_S3_REGION || 'me-central-1',
+      fromEmail: process.env.AWS_SES_FROM_EMAIL || 'noreply@24digi.ae',
+      fromName: process.env.AWS_SES_FROM_NAME || '24Digi',
+    },
+  },
 };
 
 module.exports = env;

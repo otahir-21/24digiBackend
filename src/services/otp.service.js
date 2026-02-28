@@ -3,6 +3,7 @@ const OtpChallenge = require('../models/OtpChallenge');
 const env = require('../config/env');
 const { generateOtp, hashOtp, verifyOtp } = require('../utils/crypto');
 const { maskPhone, maskEmail } = require('../utils/mask');
+const notificationService = require('./notification.service');
 const {
   UnauthorizedError,
   ValidationError,
@@ -65,9 +66,10 @@ async function startChallenge(payload) {
     language: language || 'en',
   });
 
-  // TODO: send OTP via SMS/email (stub - log in dev)
-  if (env.nodeEnv === 'development') {
-    console.log('[DEV] OTP for', phone || emailNorm, ':', otp);
+  const destination = phone || emailNorm;
+  const sent = await notificationService.sendOtp(login_method, destination, otp);
+  if (!sent.sent && env.nodeEnv === 'development') {
+    console.log('[DEV] OTP for', destination, ':', otp, sent.reason ? `(send failed: ${sent.reason})` : '');
   }
 
   const otpSentToDisplay =
@@ -146,8 +148,10 @@ async function resendOtp(challengeId) {
     }
   ).exec();
 
-  if (env.nodeEnv === 'development') {
-    console.log('[DEV] Resend OTP for', challenge.phoneNumber || challenge.email, ':', otp);
+  const destination = challenge.phoneNumber || challenge.email;
+  const sent = await notificationService.sendOtp(challenge.loginMethod, destination, otp);
+  if (!sent.sent && env.nodeEnv === 'development') {
+    console.log('[DEV] Resend OTP for', destination, ':', otp, sent.reason ? `(send failed: ${sent.reason})` : '');
   }
 
   return { expires_in_sec: env.otp.expiresSec };
